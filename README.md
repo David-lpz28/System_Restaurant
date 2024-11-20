@@ -30,6 +30,8 @@ Now you'll need to pick a host to deploy it to.
 
 If you're familiar with deploying Node applications, the built-in Remix app server is production-ready.
 
+You can run it behind a reverse proxy like Vercel or Cloudflare Workers.
+
 Make sure to deploy the output of `npm run build`
 
 - `build/server`
