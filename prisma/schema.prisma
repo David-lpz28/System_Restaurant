@@ -19,7 +19,7 @@ model Client {
   lastName  String
   phone     String?
   address   String
-  orders    Order[] @relation("ClientOrders") // Define the relation name
+  orders    Order[] @relation("ClientOrders") // Removed `onDelete`
 }
 
 model Restaurant {
@@ -27,19 +27,19 @@ model Restaurant {
   name    String
   phone   String?
   address String
-  orders  Order[] // Relation with orders
+  orders  Order[] // Removed `onDelete`
 }
 
 model Order {
-  id              String      @id @default(cuid())
-  clientId        String
-  restaurantId    String
-  createdAt       DateTime    @default(now())
-  completedAt     DateTime?   
-  status          OrderStatus @default(PENDING)
-  items           Item[]
-  client          Client      @relation(fields: [clientId], references: [id], name: "ClientOrders")
-  restaurant      Restaurant  @relation(fields: [restaurantId], references: [id])
+  id           String      @id @default(cuid())
+  clientId     String
+  restaurantId String
+  createdAt    DateTime    @default(now())
+  status       OrderStatus @default(PENDING)
+  items        Item[]
+  client       Client      @relation(fields: [clientId], references: [id], name: "ClientOrders")
+  restaurant   Restaurant  @relation(fields: [restaurantId], references: [id])
+  completedAt  DateTime?   
 }
 
 
@@ -49,5 +49,5 @@ model Item {
   quantity    Int
   description String
   unitPrice   Float
-  order       Order  @relation(fields: [orderId], references: [id]) // Relation with Order
+  order       Order  @relation(fields: [orderId], references: [id], onDelete: Cascade) // Moved `onDelete`
 }
