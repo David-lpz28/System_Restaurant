@@ -14,7 +14,7 @@ import { parsePhoneNumberFromString } from "libphonenumber-js";
 type Restaurant = {
   id: string;
   name: string;
-  phoneNumber: string;
+  phone: string;
   address: string;
 };
 
@@ -50,7 +50,7 @@ export const action: ActionFunction = async ({ request, params }) => {
 
   const formData = await request.formData();
   const name = formData.get("name");
-  const phoneNumber = formData.get("phoneNumber");
+  const phoneNumber = formData.get("phone");
   const address = formData.get("address");
 
   // Validate required fields
@@ -86,7 +86,7 @@ export const action: ActionFunction = async ({ request, params }) => {
       where: { id },
       data: {
         name,
-        phoneNumber: formattedPhoneNumber,
+        phone: formattedPhoneNumber,
         address,
       },
     });
@@ -131,8 +131,8 @@ export default function EditRestaurant() {
             Phone Number:
             <input
               type="tel"
-              name="phoneNumber"
-              defaultValue={restaurant.phoneNumber}
+              name="phone"
+              defaultValue={restaurant.phone}
               required
               pattern="^\+?[1-9]\d{1,14}$"
               title="Please enter a valid phone number."

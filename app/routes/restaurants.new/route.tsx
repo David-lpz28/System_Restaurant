@@ -36,7 +36,7 @@ import {
     const session = await getSession(request.headers.get("Cookie"));
     const formData = await request.formData();
     const name = formData.get("name");
-    const phoneNumber = formData.get("phoneNumber");
+    const phoneNumber = formData.get("phone");
     const address = formData.get("address");
   
     // Validate required fields
@@ -75,7 +75,7 @@ import {
       await prisma.restaurant.create({
         data: {
           name,
-          phoneNumber: formattedPhoneNumber,
+          phone: formattedPhoneNumber,
           address,
         },
       });
@@ -159,7 +159,7 @@ import {
               Phone Number:
               <input
                 type="tel"
-                name="phoneNumber"
+                name="phone"
                 required
                 pattern="^\+?[1-9]\d{1,14}$"
                 title="Please enter a valid phone number."

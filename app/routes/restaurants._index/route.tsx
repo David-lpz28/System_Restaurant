@@ -7,7 +7,7 @@ import { prisma } from "~/db.server";
 type Restaurant = {
   id: string;
   name: string;
-  phoneNumber: string;
+  phone: string;
   address: string;
 };
 
@@ -83,7 +83,7 @@ export default function RestaurantsList() {
             return (
               <tr key={restaurant.id}>
                 <td>{restaurant.name}</td>
-                <td>{restaurant.phoneNumber}</td>
+                <td>{restaurant.phone}</td>
                 <td>{restaurant.address}</td>
                 <td>
                   <Link to={`/restaurants/edit/${restaurant.id}`}>
