@@ -5,10 +5,13 @@ export default function Index() {
     <div>
       <h1>Welcome to the Application</h1>
       <Link to="/clients">
-        <button>Go to Client List</button>
+        <button>View Clients</button>
       </Link>
       <Link to="/restaurants" style={{ marginLeft: "10px" }}>
-        <button>Go to Restaurant List</button>
+        <button>View Restaurants</button>
+      </Link>
+      <Link to="/orders" style={{ marginLeft: "10px" }}>
+        <button>View Orders</button>
       </Link>
     </div>
   );
