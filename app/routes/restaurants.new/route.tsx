@@ -57,7 +57,7 @@ import {
     }
   
     // Validate phone number format using libphonenumber-js
-    const phoneNumberParsed = parsePhoneNumberFromString(phoneNumber, "US"); // Replace "US" with the appropriate country code
+    const phoneNumberParsed = parsePhoneNumberFromString(phoneNumber, "US");
     if (!phoneNumberParsed || !phoneNumberParsed.isValid()) {
       session.flash("error", "Invalid phone number format.");
       return redirect("/restaurants/new", {
@@ -113,7 +113,6 @@ import {
     useEffect(() => {
       if (successMessage) {
         setDisplaySuccess(successMessage);
-        // Clear the message after showing it
         const timer = setTimeout(() => {
           setDisplaySuccess(null);
         }, 5000);
@@ -122,7 +121,6 @@ import {
   
       if (errorMessage) {
         setDisplayError(errorMessage);
-        // Clear the message after showing it
         const timer = setTimeout(() => {
           setDisplayError(null);
         }, 5000);
@@ -131,120 +129,82 @@ import {
     }, [successMessage, errorMessage]);
   
     return (
-      <div style={{ maxWidth: "600px", margin: "0 auto", padding: "20px" }}>
-        <h1>Create New Restaurant</h1>
+      <div className="p-8 max-w-3xl mx-auto bg-gray-100 rounded-lg shadow-lg">
+        <header className="mb-6">
+          <h1 className="text-4xl font-bold text-gray-800">Create New Restaurant</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Fill in the details to add a new restaurant.
+          </p>
+        </header>
   
         {/* Success Message */}
-        {displaySuccess && <p style={{ color: "green" }}>{displaySuccess}</p>}
+        {displaySuccess && (
+          <p className="text-green-600 font-semibold mb-4">
+            {displaySuccess}
+          </p>
+        )}
   
         {/* Error Message */}
-        {displayError && <p style={{ color: "red" }}>{displayError}</p>}
+        {displayError && (
+          <p className="text-red-600 font-semibold mb-4">
+            {displayError}
+          </p>
+        )}
   
-        {/* Restaurant Creation Form */}
-        <Form method="post">
-          <div style={{ marginBottom: "10px" }}>
-            <label>
-              Name:
-              <input
-                type="text"
-                name="name"
-                required
-                style={{ width: "100%", padding: "8px", marginTop: "4px" }}
-                placeholder="Enter restaurant name"
-              />
-            </label>
+        <Form method="post" className="space-y-4">
+          <div>
+            <label className="block text-gray-700 font-medium mb-2">Name:</label>
+            <input
+              type="text"
+              name="name"
+              required
+              className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring focus:ring-blue-300"
+              placeholder="Enter restaurant name"
+            />
           </div>
-          <div style={{ marginBottom: "10px" }}>
-            <label>
-              Phone Number:
-              <input
-                type="tel"
-                name="phone"
-                required
-                pattern="^\+?[1-9]\d{1,14}$"
-                title="Please enter a valid phone number."
-                style={{ width: "100%", padding: "8px", marginTop: "4px" }}
-                placeholder="+1234567890"
-              />
-            </label>
+          <div>
+            <label className="block text-gray-700 font-medium mb-2">Phone Number:</label>
+            <input
+              type="tel"
+              name="phone"
+              required
+              pattern="^\+?[1-9]\d{1,14}$"
+              title="Please enter a valid phone number."
+              className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring focus:ring-blue-300"
+              placeholder="+1234567890"
+            />
           </div>
-          <div style={{ marginBottom: "10px" }}>
-            <label>
-              Address:
-              <input
-                type="text"
-                name="address"
-                required
-                style={{ width: "100%", padding: "8px", marginTop: "4px" }}
-                placeholder="Enter restaurant address"
-              />
-            </label>
+          <div>
+            <label className="block text-gray-700 font-medium mb-2">Address:</label>
+            <input
+              type="text"
+              name="address"
+              required
+              className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring focus:ring-blue-300"
+              placeholder="Enter restaurant address"
+            />
           </div>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            style={{
-              padding: "10px 20px",
-              backgroundColor: isSubmitting ? "#ccc" : "#28a745",
-              color: "#fff",
-              border: "none",
-              cursor: isSubmitting ? "not-allowed" : "pointer",
-            }}
-          >
-            {isSubmitting ? "Creating..." : "Create Restaurant"}
-          </button>
-        </Form>
   
-        {/* Back to Restaurant List Button */}
-        <div style={{ marginTop: "20px" }}>
-          <Link to="/restaurants">
+          <div className="flex items-center justify-between mt-6">
             <button
-              style={{
-                padding: "10px 20px",
-                backgroundColor: "#007bff",
-                color: "#fff",
-                border: "none",
-                cursor: "pointer",
-              }}
+              type="submit"
+              disabled={isSubmitting}
+              className={`px-6 py-3 font-medium text-white rounded-md shadow-md ${
+                isSubmitting
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-blue-600 hover:bg-blue-700"
+              }`}
             >
-              Back to Restaurant List
+              {isSubmitting ? "Creating..." : "Create Restaurant"}
             </button>
-          </Link>
-        </div>
+            <Link to="/restaurants">
+              <button className="px-6 py-3 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md shadow-md">
+                Back to Restaurant List
+              </button>
+            </Link>
+          </div>
+        </Form>
       </div>
     );
-  }
-  
-  // Error Boundary to handle errors in this route
-  import { useRouteError, isRouteErrorResponse } from "@remix-run/react";
-  
-  export function ErrorBoundary() {
-    const error = useRouteError();
-  
-    if (isRouteErrorResponse(error)) {
-      return (
-        <div style={{ padding: "20px", textAlign: "center" }}>
-          <h1>Error {error.status}</h1>
-          <p>{error.statusText}</p>
-          {error.data && <pre>{JSON.stringify(error.data, null, 2)}</pre>}
-        </div>
-      );
-    } else if (error instanceof Error) {
-      return (
-        <div style={{ padding: "20px", textAlign: "center" }}>
-          <h1>An unexpected error occurred</h1>
-          <p>{error.message}</p>
-          {process.env.NODE_ENV === "development" && (
-            <pre>{error.stack}</pre>
-          )}
-        </div>
-      );
-    } else {
-      return (
-        <div style={{ padding: "20px", textAlign: "center" }}>
-          <h1>Unknown error</h1>
-        </div>
-      );
-    }
   }
   

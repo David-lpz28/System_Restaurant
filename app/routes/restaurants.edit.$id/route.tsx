@@ -108,56 +108,75 @@ export default function EditRestaurant() {
   const isSubmitting = navigation.state === "submitting";
 
   return (
-    <div>
-      <h1>Edit Restaurant</h1>
+    <div className="p-8 max-w-3xl mx-auto bg-gray-100 rounded-lg shadow-lg">
+      <header className="mb-6">
+        <h1 className="text-4xl font-bold text-gray-800">Edit Restaurant</h1>
+        <p className="text-sm text-gray-500 mt-1">
+          Update the restaurant details below.
+        </p>
+      </header>
+
       {/* Display form error message */}
       {actionData?.formError && (
-        <p style={{ color: "red" }}>{actionData.formError}</p>
+        <p className="text-red-600 font-semibold mb-4">
+          {actionData.formError}
+        </p>
       )}
-      <Form method="post">
+
+      {/* Edit Form */}
+      <Form method="post" className="space-y-4">
         <div>
-          <label>
-            Name:
-            <input
-              type="text"
-              name="name"
-              defaultValue={restaurant.name}
-              required
-            />
-          </label>
+          <label className="block text-gray-700 font-medium mb-2">Name:</label>
+          <input
+            type="text"
+            name="name"
+            defaultValue={restaurant.name}
+            required
+            className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring focus:ring-blue-300"
+          />
         </div>
         <div>
-          <label>
+          <label className="block text-gray-700 font-medium mb-2">
             Phone Number:
-            <input
-              type="tel"
-              name="phone"
-              defaultValue={restaurant.phone}
-              required
-              pattern="^\+?[1-9]\d{1,14}$"
-              title="Please enter a valid phone number."
-            />
           </label>
+          <input
+            type="tel"
+            name="phone"
+            defaultValue={restaurant.phone}
+            required
+            pattern="^\+?[1-9]\d{1,14}$"
+            title="Please enter a valid phone number."
+            className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring focus:ring-blue-300"
+          />
         </div>
         <div>
-          <label>
-            Address:
-            <input
-              type="text"
-              name="address"
-              defaultValue={restaurant.address}
-              required
-            />
-          </label>
+          <label className="block text-gray-700 font-medium mb-2">Address:</label>
+          <input
+            type="text"
+            name="address"
+            defaultValue={restaurant.address}
+            required
+            className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring focus:ring-blue-300"
+          />
         </div>
-        <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Updating..." : "Update Restaurant"}
-        </button>
+
+        <div className="flex items-center justify-between mt-6">
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className={`px-6 py-3 font-medium text-white rounded-md shadow-md ${
+              isSubmitting ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
+            }`}
+          >
+            {isSubmitting ? "Updating..." : "Update Restaurant"}
+          </button>
+          <Link to="/restaurants">
+            <button className="px-6 py-3 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md shadow-md">
+              Back to Restaurant List
+            </button>
+          </Link>
+        </div>
       </Form>
-      {/* Back to the restaurant list */}
-      <Link to="/restaurants">
-        <button>Back to Restaurant List</button>
-      </Link>
     </div>
   );
 }
@@ -170,23 +189,22 @@ export function ErrorBoundary() {
 
   if (isRouteErrorResponse(error)) {
     return (
-      <div>
-        <h1>Error {error.status}</h1>
-        <p>{error.statusText}</p>
-        {error.data && <pre>{JSON.stringify(error.data, null, 2)}</pre>}
+      <div className="p-8 text-center">
+        <h1 className="text-2xl font-bold text-red-600">Error {error.status}</h1>
+        <p className="text-gray-700 mt-2">{error.statusText}</p>
+        {error.data && (
+          <pre className="mt-4 text-gray-500">{JSON.stringify(error.data, null, 2)}</pre>
+        )}
       </div>
     );
   } else if (error instanceof Error) {
     return (
-      <div>
-        <h1>An unexpected error occurred</h1>
-        <p>{error.message}</p>
-        {process.env.NODE_ENV === "development" && (
-          <pre>{error.stack}</pre>
-        )}
+      <div className="p-8 text-center">
+        <h1 className="text-2xl font-bold text-red-600">An unexpected error occurred</h1>
+        <p className="text-gray-700 mt-2">{error.message}</p>
       </div>
     );
   } else {
-    return <h1>Unknown error</h1>;
+    return <h1 className="text-2xl font-bold text-gray-700">Unknown error</h1>;
   }
 }
