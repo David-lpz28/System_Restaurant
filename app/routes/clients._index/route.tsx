@@ -1,9 +1,10 @@
+import { useState } from "react";
 import { Link, Form, useLoaderData, useNavigation } from "@remix-run/react";
 import type { LoaderFunction, ActionFunction } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { prisma } from "~/db.server";
-import { useEffect, useState } from "react";
 
+// Define client data type
 type Client = {
   id: string;
   firstName: string;
@@ -12,77 +13,67 @@ type Client = {
   address: string;
 };
 
+// Define loader data type
 type LoaderData = {
   clients: Client[];
   successMessage?: string;
   errorMessage?: string;
 };
 
-export const loader: LoaderFunction = async ({ request }) => {
+// Loader to fetch clients
+export const loader: LoaderFunction = async () => {
   const clients = await prisma.client.findMany({
     orderBy: { firstName: "asc" },
   });
-
-  const url = new URL(request.url);
-  const successMessage = url.searchParams.get("success") || null;
-  const errorMessage = url.searchParams.get("error") || null;
-
-  return json<LoaderData>({ clients, successMessage, errorMessage });
+  return json<LoaderData>({ clients });
 };
 
+// Action to handle client deletion
 export const action: ActionFunction = async ({ request }) => {
   const formData = await request.formData();
   const clientId = formData.get("id");
 
   if (typeof clientId !== "string") {
-    return redirect("/clients?error=Invalid client ID.");
+    return json({ errorMessage: "Invalid client ID." }, { status: 400 });
   }
 
   try {
-    await prisma.item.deleteMany({
-      where: { order: { clientId } },
-    });
+    // Cascade delete associated orders and items
     await prisma.order.deleteMany({
       where: { clientId },
     });
-
     await prisma.client.delete({
       where: { id: clientId },
     });
 
-    return redirect("/clients?success=Client successfully deleted.");
+    return redirect("/clients?success=Client deleted successfully.");
   } catch (error) {
     console.error("Error deleting client:", error);
-    return redirect("/clients?error=Failed to delete the client.");
+    return json(
+      { errorMessage: "Could not delete the client. Try again later." },
+      { status: 500 }
+    );
   }
 };
 
 export default function ClientsList() {
-  const { clients, successMessage, errorMessage } = useLoaderData<LoaderData>();
+  const { clients: initialClients, successMessage, errorMessage } =
+    useLoaderData<LoaderData>();
+  const [clients, setClients] = useState(initialClients);
   const navigation = useNavigation();
-  const [displayError, setDisplayError] = useState<string | null>(errorMessage);
-  const [displaySuccess, setDisplaySuccess] = useState<string | null>(
-    successMessage
-  );
 
-  useEffect(() => {
-    if (errorMessage) {
-      setDisplayError(errorMessage);
-      setTimeout(() => setDisplayError(null), 5000);
-    }
-    if (successMessage) {
-      setDisplaySuccess(successMessage);
-      setTimeout(() => setDisplaySuccess(null), 5000);
-    }
-  }, [errorMessage, successMessage]);
+  const handleDelete = (id: string) => {
+    setClients((prevClients) =>
+      prevClients.filter((client) => client.id !== id)
+    );
+  };
 
   return (
     <div>
       <h1>Clients</h1>
-      {displayError && <p style={{ color: "red" }}>{displayError}</p>}
-      {displaySuccess && <p style={{ color: "green" }}>{displaySuccess}</p>}
+      {successMessage && <p style={{ color: "green" }}>{successMessage}</p>}
+      {errorMessage && <p style={{ color: "red" }}>{errorMessage}</p>}
 
-      {/* Button to add a new client */}
       <div style={{ marginBottom: "20px" }}>
         <Link to="/clients/new">
           <button
@@ -130,11 +121,13 @@ export default function ClientsList() {
                     onSubmit={(e) => {
                       if (
                         !confirm(
-                          `Are you sure you want to delete ${client.firstName} ${client.lastName}?`
+                          `Are you sure you want to delete ${client.firstName} ${client.lastName}? This action will also delete all orders and associated items for this client.`
                         )
                       ) {
                         e.preventDefault();
+                        return;
                       }
+                      handleDelete(client.id); // Optimistically update the UI
                     }}
                   >
                     <input type="hidden" name="id" value={client.id} />

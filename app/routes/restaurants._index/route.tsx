@@ -1,88 +1,78 @@
+import { useState } from "react";
 import { Link, Form, useLoaderData, useNavigation } from "@remix-run/react";
 import type { LoaderFunction, ActionFunction } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { prisma } from "~/db.server";
-import { useEffect, useState } from "react";
 
+// Define restaurant data type
 type Restaurant = {
   id: string;
   name: string;
-  phone: string | null;
+  phone: string;
   address: string;
 };
 
+// Define loader data type
 type LoaderData = {
   restaurants: Restaurant[];
   successMessage?: string;
   errorMessage?: string;
 };
 
-export const loader: LoaderFunction = async ({ request }) => {
+// Loader to fetch restaurants
+export const loader: LoaderFunction = async () => {
   const restaurants = await prisma.restaurant.findMany({
     orderBy: { name: "asc" },
   });
-
-  const url = new URL(request.url);
-  const successMessage = url.searchParams.get("success") || null;
-  const errorMessage = url.searchParams.get("error") || null;
-
-  return json<LoaderData>({ restaurants, successMessage, errorMessage });
+  return json<LoaderData>({ restaurants });
 };
 
+// Action to handle restaurant deletion
 export const action: ActionFunction = async ({ request }) => {
   const formData = await request.formData();
   const restaurantId = formData.get("id");
 
   if (typeof restaurantId !== "string") {
-    return redirect("/restaurants?error=Invalid restaurant ID.");
+    return json({ errorMessage: "Invalid restaurant ID." }, { status: 400 });
   }
 
   try {
-    await prisma.item.deleteMany({
-      where: { order: { restaurantId } },
-    });
+    // Cascade delete associated orders and items
     await prisma.order.deleteMany({
       where: { restaurantId },
     });
-
     await prisma.restaurant.delete({
       where: { id: restaurantId },
     });
 
-    return redirect("/restaurants?success=Restaurant successfully deleted.");
+    return redirect("/restaurants?success=Restaurant deleted successfully.");
   } catch (error) {
     console.error("Error deleting restaurant:", error);
-    return redirect("/restaurants?error=Failed to delete the restaurant.");
+    return json(
+      { errorMessage: "Could not delete the restaurant. Try again later." },
+      { status: 500 }
+    );
   }
 };
 
 export default function RestaurantsList() {
-  const { restaurants, successMessage, errorMessage } =
+  const { restaurants: initialRestaurants, successMessage, errorMessage } =
     useLoaderData<LoaderData>();
+  const [restaurants, setRestaurants] = useState(initialRestaurants);
   const navigation = useNavigation();
-  const [displayError, setDisplayError] = useState<string | null>(errorMessage);
-  const [displaySuccess, setDisplaySuccess] = useState<string | null>(
-    successMessage
-  );
 
-  useEffect(() => {
-    if (errorMessage) {
-      setDisplayError(errorMessage);
-      setTimeout(() => setDisplayError(null), 5000);
-    }
-    if (successMessage) {
-      setDisplaySuccess(successMessage);
-      setTimeout(() => setDisplaySuccess(null), 5000);
-    }
-  }, [errorMessage, successMessage]);
+  const handleDelete = (id: string) => {
+    setRestaurants((prevRestaurants) =>
+      prevRestaurants.filter((restaurant) => restaurant.id !== id)
+    );
+  };
 
   return (
     <div>
       <h1>Restaurants</h1>
-      {displayError && <p style={{ color: "red" }}>{displayError}</p>}
-      {displaySuccess && <p style={{ color: "green" }}>{displaySuccess}</p>}
+      {successMessage && <p style={{ color: "green" }}>{successMessage}</p>}
+      {errorMessage && <p style={{ color: "red" }}>{errorMessage}</p>}
 
-      {/* Button to add a new restaurant */}
       <div style={{ marginBottom: "20px" }}>
         <Link to="/restaurants/new">
           <button
@@ -128,11 +118,13 @@ export default function RestaurantsList() {
                     onSubmit={(e) => {
                       if (
                         !confirm(
-                          `Are you sure you want to delete ${restaurant.name}?`
+                          `Are you sure you want to delete ${restaurant.name}? This action will also delete all orders and associated items for this restaurant.`
                         )
                       ) {
                         e.preventDefault();
+                        return;
                       }
+                      handleDelete(restaurant.id); // Optimistically update the UI
                     }}
                   >
                     <input type="hidden" name="id" value={restaurant.id} />
