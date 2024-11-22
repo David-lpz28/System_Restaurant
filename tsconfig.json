@@ -1,33 +1,29 @@
 {
-"include": [
-"**/*.ts",
-"**/*.tsx",
-"**/.server/**/*.ts",
-"**/.server/**/*.tsx",
-"**/.client/**/*.ts",
-"**/.client/**/*.tsx"
-],
-"compilerOptions": {
-"lib": ["DOM", "DOM.Iterable", "ES2022"],
-"types": ["@remix-run/node", "vite/client"],
-"isolatedModules": true,
-"esModuleInterop": true,
-"jsx": "react-jsx",
-"module": "ESNext",
-"moduleResolution": "Bundler",
-"resolveJsonModule": true,
-"target": "ES2022",
-"strict": true,
-"allowJs": true,
-"skipLibCheck": true,
-"forceConsistentCasingInFileNames": true,
-"baseUrl": ".",
-"paths": {
-  "~/*": ["./app/*"]
-},
-"include": ["remix.env.d.ts", "**/*.ts", "**/*.tsx"],
-"exclude": ["node_modules"],
-// Vite takes care of building everything, not tsc.
-"noEmit": true
-}
+  "compilerOptions": {
+    "target": "ESNext",                 // Target latest JavaScript version
+    "module": "ESNext",                 // Use ES modules
+    "strict": true,                     // Enable all strict type-checking options
+    "esModuleInterop": true,            // Enable interoperability between ES and CommonJS modules
+    "skipLibCheck": true,               // Skip checking `.d.ts` files
+    "moduleResolution": "Node",         // Node-style module resolution
+    "allowJs": true,                    // Allow JavaScript files in the project
+    "jsx": "react-jsx",                 // Support JSX/TSX in React projects
+    "resolveJsonModule": true,          // Allow importing JSON modules
+    "outDir": "dist",                   // Output directory for compiled files
+    "baseUrl": ".",                     // Base directory for paths
+    "paths": {
+      "~/*": ["./app/*"]                // Alias for your Remix app directory
+    }
+  },
+  "include": [
+    "app/**/*",                         // Include all files in the app directory
+    "remix.env.d.ts",                   // Include Remix environment type definitions
+    "**/*.ts",                          // Include all TypeScript files
+    "**/*.tsx"                          // Include all TSX files
+  ],
+  "exclude": [
+    "node_modules",                     // Exclude dependencies
+    "dist",                             // Exclude output directory
+    "coverage"                          // Exclude test coverage reports
+  ]
 }
