@@ -1,32 +1,51 @@
-datasource db {
-  provider = "postgresql" 
-  url      = env("DATABASE_URL")
-}
-
 generator client {
   provider = "prisma-client-js"
 }
 
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrderStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
 model Client {
-  id          String  @id @default(uuid())
-  firstName   String
-  lastName    String
-  phoneNumber String
-  address     String
-  orders      Order[] @relation("ClientOrders")
+  id        String  @id @default(cuid())
+  firstName String
+  lastName  String
+  phone     String?
+  address   String
+  orders    Order[] @relation("ClientOrders") // Define the relation name
 }
 
 model Restaurant {
-  id       String  @id @default(cuid())
-  name     String
-  location String
-  createdAt DateTime @default(now())
+  id      String  @id @default(cuid())
+  name    String
+  phone   String?
+  address String
+  orders  Order[] // Relation with orders
 }
 
 model Order {
-  id          String  @id @default(uuid())
-  description String
-  clientId    String
-  client      Client  @relation("ClientOrders", fields: [clientId], references: [id], onDelete: Cascade)
+  id           String      @id @default(cuid())
+  clientId     String
+  restaurantId String
+  createdAt    DateTime    @default(now())
+  status       OrderStatus @default(PENDING)
+  items        Item[]
+  client       Client      @relation(fields: [clientId], references: [id], name: "ClientOrders") // Relation with Client
+  restaurant   Restaurant  @relation(fields: [restaurantId], references: [id]) // Relation with Restaurant
 }
 
+model Item {
+  id          String @id @default(cuid())
+  orderId     String
+  quantity    Int
+  description String
+  unitPrice   Float
+  order       Order  @relation(fields: [orderId], references: [id]) // Relation with Order
+}
