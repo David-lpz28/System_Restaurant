@@ -10,7 +10,7 @@ type Client = {
   id: string;
   firstName: string;
   lastName: string;
-  phoneNumber: string;
+  phone: string | null;
   address: string;
 };
 
@@ -147,7 +147,7 @@ export default function ClientsList() {
               <tr key={client.id} style={{ borderBottom: "1px solid gray" }}>
                 <td style={{ padding: "10px" }}>{client.firstName}</td>
                 <td style={{ padding: "10px" }}>{client.lastName}</td>
-                <td style={{ padding: "10px" }}>{client.phoneNumber}</td>
+                <td style={{ padding: "10px" }}>{client.phone}</td>
                 <td style={{ padding: "10px" }}>{client.address}</td>
                 <td style={{ padding: "10px" }}>
                   <Link

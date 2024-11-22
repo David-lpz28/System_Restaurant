@@ -37,7 +37,7 @@ export const action: ActionFunction = async ({ request }) => {
   const formData = await request.formData();
   const firstName = formData.get("firstName");
   const lastName = formData.get("lastName");
-  const phoneNumber = formData.get("phoneNumber");
+  const phoneNumber = formData.get("phone");
   const address = formData.get("address");
 
   // Validate required fields
@@ -79,7 +79,7 @@ export const action: ActionFunction = async ({ request }) => {
       data: {
         firstName,
         lastName,
-        phoneNumber: formattedPhoneNumber,
+        phone: formattedPhoneNumber,
         address,
       },
     });
@@ -175,7 +175,7 @@ export default function NewClient() {
             Phone Number:
             <input
               type="tel"
-              name="phoneNumber"
+              name="phone"
               required
               pattern="^\+?[1-9]\d{1,14}$"
               title="Please enter a valid phone number."
