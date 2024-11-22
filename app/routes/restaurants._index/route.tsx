@@ -2,55 +2,57 @@ import { Link, Form, useLoaderData, useNavigation } from "@remix-run/react";
 import type { LoaderFunction, ActionFunction } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { prisma } from "~/db.server";
+import { useEffect, useState } from "react";
 
-// Define restaurant data type
 type Restaurant = {
   id: string;
   name: string;
-  phone: string;
+  phone: string | null;
   address: string;
 };
 
-// Define loader data type
 type LoaderData = {
   restaurants: Restaurant[];
   successMessage?: string;
   errorMessage?: string;
 };
 
-// Loader to fetch restaurants
-export const loader: LoaderFunction = async () => {
+export const loader: LoaderFunction = async ({ request }) => {
   const restaurants = await prisma.restaurant.findMany({
     orderBy: { name: "asc" },
   });
-  return json<LoaderData>({ restaurants });
+
+  const url = new URL(request.url);
+  const successMessage = url.searchParams.get("success") || null;
+  const errorMessage = url.searchParams.get("error") || null;
+
+  return json<LoaderData>({ restaurants, successMessage, errorMessage });
 };
 
-// Action to handle restaurant deletion
 export const action: ActionFunction = async ({ request }) => {
   const formData = await request.formData();
   const restaurantId = formData.get("id");
 
   if (typeof restaurantId !== "string") {
-    return json({ errorMessage: "Invalid restaurant ID." }, { status: 400 });
+    return redirect("/restaurants?error=Invalid restaurant ID.");
   }
 
   try {
-    // Cascade delete: delete associated orders first, then the restaurant
+    await prisma.item.deleteMany({
+      where: { order: { restaurantId } },
+    });
     await prisma.order.deleteMany({
       where: { restaurantId },
     });
+
     await prisma.restaurant.delete({
       where: { id: restaurantId },
     });
 
-    return redirect("/restaurants?success=Restaurant deleted successfully.");
+    return redirect("/restaurants?success=Restaurant successfully deleted.");
   } catch (error) {
     console.error("Error deleting restaurant:", error);
-    return json(
-      { errorMessage: "Could not delete the restaurant. Try again later." },
-      { status: 500 }
-    );
+    return redirect("/restaurants?error=Failed to delete the restaurant.");
   }
 };
 
@@ -58,18 +60,50 @@ export default function RestaurantsList() {
   const { restaurants, successMessage, errorMessage } =
     useLoaderData<LoaderData>();
   const navigation = useNavigation();
+  const [displayError, setDisplayError] = useState<string | null>(errorMessage);
+  const [displaySuccess, setDisplaySuccess] = useState<string | null>(
+    successMessage
+  );
+
+  useEffect(() => {
+    if (errorMessage) {
+      setDisplayError(errorMessage);
+      setTimeout(() => setDisplayError(null), 5000);
+    }
+    if (successMessage) {
+      setDisplaySuccess(successMessage);
+      setTimeout(() => setDisplaySuccess(null), 5000);
+    }
+  }, [errorMessage, successMessage]);
 
   return (
     <div>
       <h1>Restaurants</h1>
-      {successMessage && <p style={{ color: "green" }}>{successMessage}</p>}
-      {errorMessage && <p style={{ color: "red" }}>{errorMessage}</p>}
+      {displayError && <p style={{ color: "red" }}>{displayError}</p>}
+      {displaySuccess && <p style={{ color: "green" }}>{displaySuccess}</p>}
 
-      <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "20px" }}>
+      {/* Button to add a new restaurant */}
+      <div style={{ marginBottom: "20px" }}>
+        <Link to="/restaurants/new">
+          <button
+            style={{
+              padding: "10px 20px",
+              backgroundColor: "#007bff",
+              color: "white",
+              border: "none",
+              cursor: "pointer",
+            }}
+          >
+            Add New Restaurant
+          </button>
+        </Link>
+      </div>
+
+      <table>
         <thead>
           <tr>
             <th>Name</th>
-            <th>Phone Number</th>
+            <th>Phone</th>
             <th>Address</th>
             <th>Actions</th>
           </tr>
@@ -91,16 +125,15 @@ export default function RestaurantsList() {
                   </Link>
                   <Form
                     method="post"
-                    onSubmit={(event) => {
+                    onSubmit={(e) => {
                       if (
                         !confirm(
-                          `Are you sure you want to delete the restaurant "${restaurant.name}"? This action cannot be undone.`
+                          `Are you sure you want to delete ${restaurant.name}?`
                         )
                       ) {
-                        event.preventDefault();
+                        e.preventDefault();
                       }
                     }}
-                    style={{ display: "inline-block", marginLeft: "10px" }}
                   >
                     <input type="hidden" name="id" value={restaurant.id} />
                     <button type="submit" disabled={isDeleting}>
@@ -113,9 +146,6 @@ export default function RestaurantsList() {
           })}
         </tbody>
       </table>
-      <Link to="/restaurants/new">
-        <button style={{ marginTop: "20px" }}>Add New Restaurant</button>
-      </Link>
     </div>
   );
 }
