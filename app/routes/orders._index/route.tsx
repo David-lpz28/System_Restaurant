@@ -1,66 +1,114 @@
-import { Link, useLoaderData } from "@remix-run/react";
-import type { LoaderFunction } from "@remix-run/node";
+import { useLoaderData, Form, Link } from "@remix-run/react";
 import { json } from "@remix-run/node";
+import type { LoaderFunction } from "@remix-run/node";
 import { prisma } from "~/db.server";
+import { useState } from "react";
 
-// Define the order data type
-type Order = {
-  id: string;
-  createdAt: string;
-  restaurantName: string;
-};
+export const loader: LoaderFunction = async ({ request }) => {
+  const url = new URL(request.url);
+  const success = url.searchParams.get("success");
 
-// Define loader data type
-type LoaderData = {
-  orders: Order[];
-};
-
-// Loader to fetch orders
-export const loader: LoaderFunction = async () => {
   const orders = await prisma.order.findMany({
     include: {
-      restaurant: {
-        select: {
-          name: true,
-        },
-      },
+      client: true,
+      restaurant: true,
     },
     orderBy: { createdAt: "desc" },
   });
 
-  // Map the orders to include only the necessary fields
-  const mappedOrders = orders.map((order) => ({
-    id: order.id,
-    createdAt: order.createdAt.toISOString(),
-    restaurantName: order.restaurant.name,
-  }));
-
-  return json<LoaderData>({ orders: mappedOrders });
+  return json({ orders, success });
 };
 
-export default function OrdersList() {
-  const { orders } = useLoaderData<LoaderData>();
+export default function OrdersIndex() {
+  const { orders, success } = useLoaderData();
+  const [filter, setFilter] = useState("ALL");
+
+  // Filter orders by status
+  const filteredOrders = orders.filter((order) =>
+    filter === "ALL" ? true : order.status === filter
+  );
 
   return (
     <div>
-      <h1>Orders</h1>
-      <Link to="/orders/new">
-        <button style={{ marginBottom: "20px" }}>Create New Order</button>
-      </Link>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <h1>Orders List</h1>
+
+      {/* Success Message */}
+      {success && <p style={{ color: "green" }}>Order status updated successfully!</p>}
+
+      {/* Navigation to Create New Order */}
+      <nav style={{ marginBottom: "20px" }}>
+        <Link to="/orders/new">
+          <button style={{ padding: "10px 20px", backgroundColor: "#007bff", color: "white" }}>
+            Create New Order
+          </button>
+        </Link>
+      </nav>
+
+      {/* Filter Orders by Status */}
+      <label>
+        Filter by Status:
+        <select value={filter} onChange={(e) => setFilter(e.target.value)}>
+          <option value="ALL">All</option>
+          <option value="PENDING">Pending</option>
+          <option value="IN_PROGRESS">In Progress</option>
+          <option value="COMPLETED">Completed</option>
+        </select>
+      </label>
+
+      {/* Orders Table */}
+      <table border="1" style={{ width: "100%", marginTop: "20px" }}>
         <thead>
           <tr>
             <th>Order ID</th>
+            <th>Client</th>
             <th>Restaurant</th>
             <th>Created At</th>
+            <th>Status</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {orders.map((order) => (
+          {filteredOrders.map((order) => (
             <tr key={order.id}>
               <td>{order.id}</td>
-              <td>{order.restaurantName}</td>
+              <td>{order.client.firstName} {order.client.lastName}</td>
+              <td>{order.restaurant.name}</td>
               <td>{new Date(order.createdAt).toLocaleString()}</td>
+
+              {/* Display order status with color */}
+              <td
+                style={{
+                  color:
+                    order.status === "PENDING"
+                      ? "orange"
+                      : order.status === "IN_PROGRESS"
+                      ? "blue"
+                      : "green",
+                  fontWeight: "bold",
+                }}
+              >
+                {order.status}
+              </td>
+
+              {/* Status Update Controls */}
+              <td>
+                {order.status !== "COMPLETED" && (
+                  <Form method="post" action={`/orders/${order.id}/status`}>
+                    <select name="status" defaultValue={order.status}>
+                      {order.status === "PENDING" && (
+                        <>
+                          <option value="IN_PROGRESS">In Progress</option>
+                          <option value="COMPLETED">Completed</option>
+                        </>
+                      )}
+                      {order.status === "IN_PROGRESS" && (
+                        <option value="COMPLETED">Completed</option>
+                      )}
+                    </select>
+                    <button type="submit">Update</button>
+                  </Form>
+                )}
+              </td>
             </tr>
           ))}
         </tbody>
