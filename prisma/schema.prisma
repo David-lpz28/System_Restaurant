@@ -31,14 +31,15 @@ model Restaurant {
 }
 
 model Order {
-  id           String      @id @default(cuid())
-  clientId     String
-  restaurantId String
-  createdAt    DateTime    @default(now())
-  status       OrderStatus @default(PENDING)
-  items        Item[]
-  client       Client      @relation(fields: [clientId], references: [id], name: "ClientOrders") // Relation with Client
-  restaurant   Restaurant  @relation(fields: [restaurantId], references: [id]) // Relation with Restaurant
+  id                String      @id @default(cuid())
+  clientId          String
+  restaurantId      String
+  createdAt         DateTime    @default(now())
+  completedTimestamp DateTime? // Optional timestamp for completed orders
+  status            OrderStatus @default(PENDING)
+  items             Item[]
+  client            Client      @relation(fields: [clientId], references: [id], name: "ClientOrders")
+  restaurant        Restaurant  @relation(fields: [restaurantId], references: [id])
 }
 
 model Item {

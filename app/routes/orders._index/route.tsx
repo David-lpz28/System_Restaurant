@@ -20,7 +20,7 @@ export const loader: LoaderFunction = async ({ request }) => {
 };
 
 export default function OrdersIndex() {
-  const { orders, success } = useLoaderData();
+  const { orders, success } = useLoaderData<typeof loader>();
   const [filter, setFilter] = useState("ALL");
 
   // Filter orders by status

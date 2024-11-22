@@ -37,10 +37,13 @@ export const action: ActionFunction = async ({ params, request }) => {
     );
   }
 
-  // Update the order's status
+  // Update the order's status and completed timestamp if applicable
   await prisma.order.update({
     where: { id },
-    data: { status: newStatus },
+    data: {
+      status: newStatus,
+      completedTimestamp: newStatus === "COMPLETED" ? new Date() : null,
+    },
   });
 
   return redirect("/orders?success=true");
