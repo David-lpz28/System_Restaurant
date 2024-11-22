@@ -1,0 +1,32 @@
+datasource db {
+  provider = "postgresql" 
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Client {
+  id          String  @id @default(uuid())
+  firstName   String
+  lastName    String
+  phoneNumber String
+  address     String
+  orders      Order[] @relation("ClientOrders")
+}
+
+model Restaurant {
+  id       String  @id @default(cuid())
+  name     String
+  location String
+  createdAt DateTime @default(now())
+}
+
+model Order {
+  id          String  @id @default(uuid())
+  description String
+  clientId    String
+  client      Client  @relation("ClientOrders", fields: [clientId], references: [id], onDelete: Cascade)
+}
+
