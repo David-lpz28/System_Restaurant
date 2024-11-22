@@ -1,11 +1,9 @@
-import { Link, useLoaderData, Form, useNavigation } from "@remix-run/react";
+import { Link, Form, useLoaderData, useNavigation } from "@remix-run/react";
 import type { LoaderFunction, ActionFunction } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { prisma } from "~/db.server";
-import { useEffect, useState } from "react";
-import { getSession, commitSession } from "../../../sessions.server";
 
-// Define the restaurant data type
+// Define restaurant data type
 type Restaurant = {
   id: string;
   name: string;
@@ -13,31 +11,19 @@ type Restaurant = {
   address: string;
 };
 
-// Define the loader data type
+// Define loader data type
 type LoaderData = {
   restaurants: Restaurant[];
   successMessage?: string;
   errorMessage?: string;
 };
 
-// Loader to fetch the list of restaurants and flash messages
-export const loader: LoaderFunction = async ({ request }) => {
-  const restaurants: Restaurant[] = await prisma.restaurant.findMany({
+// Loader to fetch restaurants
+export const loader: LoaderFunction = async () => {
+  const restaurants = await prisma.restaurant.findMany({
     orderBy: { name: "asc" },
   });
-
-  const session = await getSession(request.headers.get("Cookie"));
-  const successMessage = session.get("success");
-  const errorMessage = session.get("error");
-
-  return json<LoaderData>(
-    { restaurants, successMessage, errorMessage },
-    {
-      headers: {
-        "Set-Cookie": await commitSession(session),
-      },
-    }
-  );
+  return json<LoaderData>({ restaurants });
 };
 
 // Action to handle restaurant deletion
@@ -46,93 +32,46 @@ export const action: ActionFunction = async ({ request }) => {
   const restaurantId = formData.get("id");
 
   if (typeof restaurantId !== "string") {
-    const session = await getSession(request.headers.get("Cookie"));
-    session.flash("error", "Invalid restaurant ID.");
-    return redirect("/restaurants", {
-      headers: {
-        "Set-Cookie": await commitSession(session),
-      },
-    });
+    return json({ errorMessage: "Invalid restaurant ID." }, { status: 400 });
   }
 
   try {
+    // Cascade delete: delete associated orders first, then the restaurant
+    await prisma.order.deleteMany({
+      where: { restaurantId },
+    });
     await prisma.restaurant.delete({
       where: { id: restaurantId },
     });
-    const session = await getSession(request.headers.get("Cookie"));
-    session.flash("success", "Restaurant successfully deleted.");
-    return redirect("/restaurants", {
-      headers: {
-        "Set-Cookie": await commitSession(session),
-      },
-    });
+
+    return redirect("/restaurants?success=Restaurant deleted successfully.");
   } catch (error) {
-    console.error("Error deleting the restaurant:", error);
-    const session = await getSession(request.headers.get("Cookie"));
-    session.flash("error", "Could not delete the restaurant.");
-    return redirect("/restaurants", {
-      headers: {
-        "Set-Cookie": await commitSession(session),
-      },
-    });
+    console.error("Error deleting restaurant:", error);
+    return json(
+      { errorMessage: "Could not delete the restaurant. Try again later." },
+      { status: 500 }
+    );
   }
 };
 
 export default function RestaurantsList() {
-  const { restaurants, successMessage, errorMessage } = useLoaderData<LoaderData>();
+  const { restaurants, successMessage, errorMessage } =
+    useLoaderData<LoaderData>();
   const navigation = useNavigation();
-  const [displaySuccess, setDisplaySuccess] = useState<string | null>(
-    successMessage || null
-  );
-  const [displayError, setDisplayError] = useState<string | null>(
-    errorMessage || null
-  );
-
-  useEffect(() => {
-    if (successMessage) {
-      setDisplaySuccess(successMessage);
-      // Clear the message after displaying it
-      setTimeout(() => {
-        setDisplaySuccess(null);
-      }, 5000);
-    }
-
-    if (errorMessage) {
-      setDisplayError(errorMessage);
-      // Clear the message after displaying it
-      setTimeout(() => {
-        setDisplayError(null);
-      }, 5000);
-    }
-  }, [successMessage, errorMessage]);
-
-  if (!restaurants) {
-    return <p>Loading restaurants...</p>;
-  }
 
   return (
     <div>
-      <h1>Restaurant List</h1>
-      {displaySuccess && <p style={{ color: "green" }}>{displaySuccess}</p>}
-      {displayError && <p style={{ color: "red" }}>{displayError}</p>}
-      <Link to="/restaurants/new">
-        <button>Create New Restaurant</button>
-      </Link>
+      <h1>Restaurants</h1>
+      {successMessage && <p style={{ color: "green" }}>{successMessage}</p>}
+      {errorMessage && <p style={{ color: "red" }}>{errorMessage}</p>}
 
-      {/* Restaurant table */}
-      <table
-        style={{
-          width: "100%",
-          borderCollapse: "collapse",
-          marginTop: "20px",
-        }}
-      >
+      <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "20px" }}>
         <thead>
-          <tr style={{ borderBottom: "2px solid black" }}>
-            <th style={{ padding: "10px" }}>Name</th>
-            <th style={{ padding: "10px" }}>Phone Number</th>
-            <th style={{ padding: "10px" }}>Address</th>
-            <th style={{ padding: "10px" }}>Actions</th>
+          <tr>
+            <th>Name</th>
+            <th>Phone Number</th>
+            <th>Address</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -142,15 +81,12 @@ export default function RestaurantsList() {
               navigation.state === "submitting";
 
             return (
-              <tr key={restaurant.id} style={{ borderBottom: "1px solid gray" }}>
-                <td style={{ padding: "10px" }}>{restaurant.name}</td>
-                <td style={{ padding: "10px" }}>{restaurant.phoneNumber}</td>
-                <td style={{ padding: "10px" }}>{restaurant.address}</td>
-                <td style={{ padding: "10px" }}>
-                  <Link
-                    to={`/restaurants/edit/${restaurant.id}`}
-                    style={{ marginRight: "10px" }}
-                  >
+              <tr key={restaurant.id}>
+                <td>{restaurant.name}</td>
+                <td>{restaurant.phoneNumber}</td>
+                <td>{restaurant.address}</td>
+                <td>
+                  <Link to={`/restaurants/edit/${restaurant.id}`}>
                     <button>Edit</button>
                   </Link>
                   <Form
@@ -158,13 +94,13 @@ export default function RestaurantsList() {
                     onSubmit={(event) => {
                       if (
                         !confirm(
-                          `Are you sure you want to delete ${restaurant.name}?`
+                          `Are you sure you want to delete the restaurant "${restaurant.name}"? This action cannot be undone.`
                         )
                       ) {
                         event.preventDefault();
                       }
                     }}
-                    style={{ display: "inline-block" }}
+                    style={{ display: "inline-block", marginLeft: "10px" }}
                   >
                     <input type="hidden" name="id" value={restaurant.id} />
                     <button type="submit" disabled={isDeleting}>
@@ -177,33 +113,9 @@ export default function RestaurantsList() {
           })}
         </tbody>
       </table>
+      <Link to="/restaurants/new">
+        <button style={{ marginTop: "20px" }}>Add New Restaurant</button>
+      </Link>
     </div>
   );
-}
-
-// Error Boundary to handle errors in this route
-import { useRouteError, isRouteErrorResponse } from "@remix-run/react";
-
-export function ErrorBoundary() {
-  const error = useRouteError();
-
-  if (isRouteErrorResponse(error)) {
-    return (
-      <div>
-        <h1>Error {error.status}</h1>
-        <p>{error.statusText}</p>
-        {error.data && <pre>{JSON.stringify(error.data, null, 2)}</pre>}
-      </div>
-    );
-  } else if (error instanceof Error) {
-    return (
-      <div>
-        <h1>An unexpected error occurred</h1>
-        <p>{error.message}</p>
-        {process.env.NODE_ENV === "development" && <pre>{error.stack}</pre>}
-      </div>
-    );
-  } else {
-    return <h1>Unknown error</h1>;
-  }
 }
