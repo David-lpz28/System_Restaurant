@@ -1,13 +1,10 @@
-import { useLoaderData, Form, Link } from "@remix-run/react";
+import { useLoaderData, Link, Form } from "@remix-run/react";
 import { json } from "@remix-run/node";
 import type { LoaderFunction } from "@remix-run/node";
 import { prisma } from "~/db.server";
 import { useState } from "react";
 
 export const loader: LoaderFunction = async ({ request }) => {
-  const url = new URL(request.url);
-  const success = url.searchParams.get("success");
-
   const orders = await prisma.order.findMany({
     include: {
       client: true,
@@ -16,11 +13,11 @@ export const loader: LoaderFunction = async ({ request }) => {
     orderBy: { createdAt: "desc" },
   });
 
-  return json({ orders, success });
+  return json({ orders });
 };
 
 export default function OrdersIndex() {
-  const { orders, success } = useLoaderData<typeof loader>();
+  const { orders } = useLoaderData();
   const [filter, setFilter] = useState("ALL");
 
   // Filter orders by status
@@ -32,28 +29,27 @@ export default function OrdersIndex() {
     <div>
       <h1>Orders List</h1>
 
-      {/* Success Message */}
-      {success && <p style={{ color: "green" }}>Order status updated successfully!</p>}
-
       {/* Navigation to Create New Order */}
-      <nav style={{ marginBottom: "20px" }}>
+      <div style={{ marginBottom: "20px" }}>
         <Link to="/orders/new">
           <button style={{ padding: "10px 20px", backgroundColor: "#007bff", color: "white" }}>
             Create New Order
           </button>
         </Link>
-      </nav>
+      </div>
 
       {/* Filter Orders by Status */}
-      <label>
-        Filter by Status:
-        <select value={filter} onChange={(e) => setFilter(e.target.value)}>
-          <option value="ALL">All</option>
-          <option value="PENDING">Pending</option>
-          <option value="IN_PROGRESS">In Progress</option>
-          <option value="COMPLETED">Completed</option>
-        </select>
-      </label>
+      <div style={{ marginBottom: "20px" }}>
+        <label>
+          Filter by Status:
+          <select value={filter} onChange={(e) => setFilter(e.target.value)} style={{ marginLeft: "10px" }}>
+            <option value="ALL">All</option>
+            <option value="PENDING">Pending</option>
+            <option value="IN_PROGRESS">In Progress</option>
+            <option value="COMPLETED">Completed</option>
+          </select>
+        </label>
+      </div>
 
       {/* Orders Table */}
       <table border="1" style={{ width: "100%", marginTop: "20px" }}>
@@ -70,12 +66,19 @@ export default function OrdersIndex() {
         <tbody>
           {filteredOrders.map((order) => (
             <tr key={order.id}>
-              <td>{order.id}</td>
-              <td>{order.client.firstName} {order.client.lastName}</td>
+              <td>
+                <Link
+                  to={`/orders/${order.id}`}
+                  style={{ textDecoration: "underline", color: "blue" }}
+                >
+                  {order.id}
+                </Link>
+              </td>
+              <td>
+                {order.client.firstName} {order.client.lastName}
+              </td>
               <td>{order.restaurant.name}</td>
               <td>{new Date(order.createdAt).toLocaleString()}</td>
-
-              {/* Display order status with color */}
               <td
                 style={{
                   color:
@@ -89,9 +92,8 @@ export default function OrdersIndex() {
               >
                 {order.status}
               </td>
-
-              {/* Status Update Controls */}
               <td>
+                {/* Status Update Form */}
                 {order.status !== "COMPLETED" && (
                   <Form method="post" action={`/orders/${order.id}/status`}>
                     <select name="status" defaultValue={order.status}>
@@ -105,7 +107,9 @@ export default function OrdersIndex() {
                         <option value="COMPLETED">Completed</option>
                       )}
                     </select>
-                    <button type="submit">Update</button>
+                    <button type="submit" style={{ marginLeft: "10px" }}>
+                      Update
+                    </button>
                   </Form>
                 )}
               </td>
