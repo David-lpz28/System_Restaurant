@@ -55,7 +55,7 @@ export const action: ActionFunction = async ({ request }) => {
     }
 
     // Create the order with associated items
-    const newOrder = await prisma.order.create({
+    await prisma.order.create({
       data: {
         clientId: clientId as string,
         restaurantId: restaurantId as string,
@@ -70,7 +70,7 @@ export const action: ActionFunction = async ({ request }) => {
     });
 
     // Redirect to orders list with success message
-    return redirect(`/orders?success=true&orderId=${newOrder.id}`);
+    return redirect(`/orders?success=true`);
   } catch (error) {
     console.error("Error creating order:", error);
 
@@ -105,84 +105,123 @@ export default function NewOrder() {
   };
 
   return (
-    <div>
-      <h1>Create New Order</h1>
-      <Form
-        method="post"
-        onSubmit={(e) => {
-          const itemsData = JSON.stringify(items);
-          const hiddenInput = document.createElement("input");
-          hiddenInput.type = "hidden";
-          hiddenInput.name = "items";
-          hiddenInput.value = itemsData;
-          e.currentTarget.appendChild(hiddenInput);
-        }}
-      >
-        {/* Client Selection */}
-        <label>
-          Client:
-          <select name="clientId" required>
-            <option value="">Select a client</option>
-            {clients.map((client) => (
-              <option key={client.id} value={client.id}>
-                {client.name}
-              </option>
-            ))}
-          </select>
-        </label>
+    <div className="min-h-screen bg-gray-900 text-gray-100 p-6">
+      <div className="container mx-auto">
+        <h1 className="text-3xl font-bold text-center mb-8">Create New Order</h1>
 
-        {/* Restaurant Selection */}
-        <label>
-          Restaurant:
-          <select name="restaurantId" required>
-            <option value="">Select a restaurant</option>
-            {restaurants.map((restaurant) => (
-              <option key={restaurant.id} value={restaurant.id}>
-                {restaurant.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <Form
+          method="post"
+          onSubmit={(e) => {
+            const itemsData = JSON.stringify(items);
+            const hiddenInput = document.createElement("input");
+            hiddenInput.type = "hidden";
+            hiddenInput.name = "items";
+            hiddenInput.value = itemsData;
+            e.currentTarget.appendChild(hiddenInput);
+          }}
+          className="bg-gray-800 p-6 rounded shadow-md"
+        >
+          {/* Client Selection */}
+          <div className="mb-4">
+            <label className="block text-lg font-medium mb-2">Client:</label>
+            <select
+              name="clientId"
+              required
+              className="w-full p-2 rounded bg-gray-700 text-gray-100"
+            >
+              <option value="">Select a client</option>
+              {clients.map((client) => (
+                <option key={client.id} value={client.id}>
+                  {client.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        {/* Order Items */}
-        <h2>Order Items</h2>
-        {items.map((item, index) => (
-          <div key={index}>
-            <input
-              type="number"
-              placeholder="Quantity"
-              value={item.quantity}
-              onChange={(e) => handleItemChange(index, "quantity", e.target.value)}
+          {/* Restaurant Selection */}
+          <div className="mb-4">
+            <label className="block text-lg font-medium mb-2">Restaurant:</label>
+            <select
+              name="restaurantId"
               required
-            />
-            <input
-              type="text"
-              placeholder="Description"
-              value={item.description}
-              onChange={(e) => handleItemChange(index, "description", e.target.value)}
-              required
-            />
-            <input
-              type="number"
-              placeholder="Unit Price"
-              value={item.unitPrice}
-              onChange={(e) => handleItemChange(index, "unitPrice", e.target.value)}
-              required
-            />
-            <button type="button" onClick={() => removeItem(index)}>
-              Remove
+              className="w-full p-2 rounded bg-gray-700 text-gray-100"
+            >
+              <option value="">Select a restaurant</option>
+              {restaurants.map((restaurant) => (
+                <option key={restaurant.id} value={restaurant.id}>
+                  {restaurant.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Order Items */}
+          <h2 className="text-xl font-semibold mb-4">Order Items</h2>
+          {items.map((item, index) => (
+            <div key={index} className="flex gap-4 mb-4">
+              <input
+                type="number"
+                placeholder="Quantity"
+                value={item.quantity}
+                onChange={(e) => handleItemChange(index, "quantity", e.target.value)}
+                required
+                className="w-1/4 p-2 rounded bg-gray-700 text-gray-100"
+              />
+              <input
+                type="text"
+                placeholder="Description"
+                value={item.description}
+                onChange={(e) => handleItemChange(index, "description", e.target.value)}
+                required
+                className="w-1/2 p-2 rounded bg-gray-700 text-gray-100"
+              />
+              <input
+                type="number"
+                placeholder="Unit Price"
+                value={item.unitPrice}
+                onChange={(e) => handleItemChange(index, "unitPrice", e.target.value)}
+                required
+                className="w-1/4 p-2 rounded bg-gray-700 text-gray-100"
+              />
+              <button
+                type="button"
+                onClick={() => removeItem(index)}
+                className="px-4 py-2 bg-red-500 text-gray-900 rounded hover:bg-red-400"
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={addItem}
+            className="px-4 py-2 bg-blue-600 text-gray-100 rounded hover:bg-blue-500"
+          >
+            Add Item
+          </button>
+
+          {/* Submit */}
+          <div className="mt-6 text-center">
+            <button
+              type="submit"
+              disabled={navigation.state === "submitting"}
+              className="px-6 py-3 bg-green-600 text-gray-100 rounded hover:bg-green-500"
+            >
+              {navigation.state === "submitting" ? "Creating..." : "Create Order"}
             </button>
           </div>
-        ))}
-        <button type="button" onClick={addItem}>
-          Add Item
-        </button>
+        </Form>
 
-        {/* Submit */}
-        <button type="submit" disabled={navigation.state === "submitting"}>
-          {navigation.state === "submitting" ? "Creating..." : "Create Order"}
-        </button>
-      </Form>
+        {/* Back Button */}
+        <div className="mt-6 text-center">
+          <button
+            onClick={() => window.history.back()}
+            className="px-6 py-3 bg-gray-700 text-gray-100 rounded hover:bg-gray-600"
+          >
+            Back to Orders
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

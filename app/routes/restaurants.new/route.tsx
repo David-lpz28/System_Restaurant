@@ -57,7 +57,7 @@ import {
     }
   
     // Validate phone number format using libphonenumber-js
-    const phoneNumberParsed = parsePhoneNumberFromString(phoneNumber, "US");
+    const phoneNumberParsed = parsePhoneNumberFromString(phoneNumber, "US"); // Replace "US" with the appropriate country code
     if (!phoneNumberParsed || !phoneNumberParsed.isValid()) {
       session.flash("error", "Invalid phone number format.");
       return redirect("/restaurants/new", {
@@ -113,6 +113,7 @@ import {
     useEffect(() => {
       if (successMessage) {
         setDisplaySuccess(successMessage);
+        // Clear the message after showing it
         const timer = setTimeout(() => {
           setDisplaySuccess(null);
         }, 5000);
@@ -121,6 +122,7 @@ import {
   
       if (errorMessage) {
         setDisplayError(errorMessage);
+        // Clear the message after showing it
         const timer = setTimeout(() => {
           setDisplayError(null);
         }, 5000);
@@ -129,81 +131,76 @@ import {
     }, [successMessage, errorMessage]);
   
     return (
-      <div className="p-8 max-w-3xl mx-auto bg-gray-100 rounded-lg shadow-lg">
-        <header className="mb-6">
-          <h1 className="text-4xl font-bold text-gray-800">Create New Restaurant</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Fill in the details to add a new restaurant.
-          </p>
-        </header>
+      <div className="min-h-screen bg-gray-900 text-gray-100 p-6">
+        <div className="container mx-auto max-w-lg">
+          <h1 className="text-3xl font-bold text-center mb-8">Create New Restaurant</h1>
   
-        {/* Success Message */}
-        {displaySuccess && (
-          <p className="text-green-600 font-semibold mb-4">
-            {displaySuccess}
-          </p>
-        )}
+          {/* Success Message */}
+          {displaySuccess && (
+            <p className="text-green-500 bg-gray-800 p-2 rounded text-center mb-4">
+              {displaySuccess}
+            </p>
+          )}
   
-        {/* Error Message */}
-        {displayError && (
-          <p className="text-red-600 font-semibold mb-4">
-            {displayError}
-          </p>
-        )}
+          {/* Error Message */}
+          {displayError && (
+            <p className="text-red-500 bg-gray-800 p-2 rounded text-center mb-4">
+              {displayError}
+            </p>
+          )}
   
-        <Form method="post" className="space-y-4">
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">Name:</label>
-            <input
-              type="text"
-              name="name"
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring focus:ring-blue-300"
-              placeholder="Enter restaurant name"
-            />
-          </div>
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">Phone Number:</label>
-            <input
-              type="tel"
-              name="phone"
-              required
-              pattern="^\+?[1-9]\d{1,14}$"
-              title="Please enter a valid phone number."
-              className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring focus:ring-blue-300"
-              placeholder="+1234567890"
-            />
-          </div>
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">Address:</label>
-            <input
-              type="text"
-              name="address"
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring focus:ring-blue-300"
-              placeholder="Enter restaurant address"
-            />
-          </div>
-  
-          <div className="flex items-center justify-between mt-6">
+          <Form method="post" className="bg-gray-800 p-6 rounded shadow-md">
+            <div className="mb-4">
+              <label className="block text-lg font-medium mb-2">Name:</label>
+              <input
+                type="text"
+                name="name"
+                required
+                className="w-full p-2 rounded bg-gray-700 text-gray-100"
+                placeholder="Enter restaurant name"
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block text-lg font-medium mb-2">Phone Number:</label>
+              <input
+                type="tel"
+                name="phone"
+                required
+                pattern="^\+?[1-9]\d{1,14}$"
+                title="Please enter a valid phone number."
+                className="w-full p-2 rounded bg-gray-700 text-gray-100"
+                placeholder="+1234567890"
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block text-lg font-medium mb-2">Address:</label>
+              <input
+                type="text"
+                name="address"
+                required
+                className="w-full p-2 rounded bg-gray-700 text-gray-100"
+                placeholder="Enter restaurant address"
+              />
+            </div>
             <button
               type="submit"
               disabled={isSubmitting}
-              className={`px-6 py-3 font-medium text-white rounded-md shadow-md ${
-                isSubmitting
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-blue-600 hover:bg-blue-700"
-              }`}
+              className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-gray-100 font-bold rounded"
             >
               {isSubmitting ? "Creating..." : "Create Restaurant"}
             </button>
-            <Link to="/restaurants">
-              <button className="px-6 py-3 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md shadow-md">
-                Back to Restaurant List
-              </button>
+          </Form>
+  
+          {/* Back to Restaurant List Button */}
+          <div className="mt-6 text-center">
+            <Link
+              to="/restaurants"
+              className="inline-block px-6 py-3 bg-gray-700 hover:bg-gray-600 text-gray-100 rounded font-medium"
+            >
+              Back to Restaurant List
             </Link>
           </div>
-        </Form>
+        </div>
       </div>
     );
   }

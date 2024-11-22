@@ -1,144 +1,167 @@
-import { Link, Form, useLoaderData, useNavigation } from "@remix-run/react";
-import type { LoaderFunction, ActionFunction } from "@remix-run/node";
+import { Link, Form, useLoaderData } from "@remix-run/react";
 import { json, redirect } from "@remix-run/node";
+import type { LoaderFunction, ActionFunction } from "@remix-run/node";
 import { prisma } from "~/db.server";
+import { useState } from "react";
 
-type Client = {
-  id: string;
-  firstName: string;
-  lastName: string;
-  phone: string | null;
-  address: string;
+// Loader to fetch clients
+export const loader: LoaderFunction = async ({ request }) => {
+  const url = new URL(request.url);
+  const search = url.searchParams.get("search") || "";
+  const sort = url.searchParams.get("sort") || "firstName";
+
+  const clients = await prisma.client.findMany({
+    where: {
+      OR: [
+        { firstName: { contains: search, mode: "insensitive" } },
+        { lastName: { contains: search, mode: "insensitive" } },
+        { address: { contains: search, mode: "insensitive" } },
+      ],
+    },
+    orderBy: { [sort]: "asc" },
+  });
+
+  return json({ clients });
 };
 
-type LoaderData = {
-  clients: Client[];
-  successMessage?: string;
-  errorMessage?: string;
-};
-
-// Loader
-export const loader: LoaderFunction = async () => {
-  const clients = await prisma.client.findMany({ orderBy: { firstName: "asc" } });
-  return json<LoaderData>({ clients });
-};
-
-// Action to handle deletion
+// Action to handle client deletion
 export const action: ActionFunction = async ({ request }) => {
   const formData = await request.formData();
   const clientId = formData.get("id");
 
-  if (typeof clientId !== "string") {
-    return json({ errorMessage: "Invalid client ID." }, { status: 400 });
+  if (typeof clientId !== "string" || !clientId) {
+    return json({ error: "Invalid client ID." }, { status: 400 });
   }
 
   try {
-    await prisma.order.deleteMany({ where: { clientId } });
+    // Delete associated orders and items before deleting the client
+    const orders = await prisma.order.findMany({ where: { clientId } });
+    for (const order of orders) {
+      await prisma.item.deleteMany({ where: { orderId: order.id } });
+      await prisma.order.delete({ where: { id: order.id } });
+    }
+
     await prisma.client.delete({ where: { id: clientId } });
 
-    return redirect("/clients?success=Client deleted successfully.");
+    return redirect("/clients?success=Client and associated orders deleted successfully.");
   } catch (error) {
     console.error("Error deleting client:", error);
-    return json(
-      { errorMessage: "Could not delete the client. Try again later." },
-      { status: 500 }
-    );
+    return json({ error: "Failed to delete the client." }, { status: 500 });
   }
 };
 
-// Component
+// Component for Clients List
 export default function ClientsList() {
-  const { clients, successMessage, errorMessage } = useLoaderData<LoaderData>();
-  const navigation = useNavigation();
+  const { clients } = useLoaderData();
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState("firstName");
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const params = new URLSearchParams();
+    if (search) params.append("search", search);
+    if (sort) params.append("sort", sort);
+    window.location.search = params.toString();
+  };
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <h1 className="text-3xl font-bold mb-4 text-gray-800">Clients</h1>
-      {successMessage && (
-        <div className="bg-green-100 text-green-800 p-2 rounded mb-4">
-          {successMessage}
-        </div>
-      )}
-      {errorMessage && (
-        <div className="bg-red-100 text-red-800 p-2 rounded mb-4">
-          {errorMessage}
-        </div>
-      )}
-      <div className="flex justify-between items-center mb-4">
-        <Link to="/">
-          <button className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
-            Back to Home
-          </button>
-        </Link>
-        <Link to="/clients/new">
-          <button className="bg-blue-600 hover:bg-blue-800 text-white font-bold py-2 px-4 rounded">
-            Add New Client
-          </button>
-        </Link>
-      </div>
-      <table className="table-auto w-full border-collapse border border-gray-300 shadow-lg">
-        <thead>
-          <tr className="bg-gray-800 text-white">
-            <th className="border border-gray-300 px-4 py-2">First Name</th>
-            <th className="border border-gray-300 px-4 py-2">Last Name</th>
-            <th className="border border-gray-300 px-4 py-2">Phone</th>
-            <th className="border border-gray-300 px-4 py-2">Address</th>
-            <th className="border border-gray-300 px-4 py-2">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {clients.map((client) => {
-            const isDeleting =
-              navigation.formData?.get("id") === client.id &&
-              navigation.state === "submitting";
+    <div className="min-h-screen bg-gray-900 text-gray-200">
+      <div className="container mx-auto p-6">
+        <h1 className="text-3xl font-bold text-center mb-8">Clients Management</h1>
 
-            return (
-              <tr key={client.id} className="odd:bg-gray-50 even:bg-gray-100">
-                <td className="border border-gray-300 px-4 py-2 text-gray-700">
-                  {client.firstName}
-                </td>
-                <td className="border border-gray-300 px-4 py-2 text-gray-700">
-                  {client.lastName}
-                </td>
-                <td className="border border-gray-300 px-4 py-2 text-gray-700">
-                  {client.phone || "N/A"}
-                </td>
-                <td className="border border-gray-300 px-4 py-2 text-gray-700">
-                  {client.address}
-                </td>
-                <td className="border border-gray-300 px-4 py-2">
-                  <Link to={`/clients/edit/${client.id}`}>
-                    <button className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded mr-2">
-                      Edit
-                    </button>
-                  </Link>
-                  <Form
-                    method="post"
-                    onSubmit={(e) => {
-                      if (!confirm(`Are you sure you want to delete ${client.firstName}?`)) {
-                        e.preventDefault();
-                      }
-                    }}
-                  >
-                    <input type="hidden" name="id" value={client.id} />
-                    <button
-                      type="submit"
-                      className={`px-3 py-1 rounded ${
-                        isDeleting
-                          ? "bg-gray-400 text-white cursor-not-allowed"
-                          : "bg-red-600 hover:bg-red-700 text-white"
-                      }`}
-                      disabled={isDeleting}
-                    >
-                      {isDeleting ? "Deleting..." : "Delete"}
-                    </button>
-                  </Form>
-                </td>
+        {/* Navigation */}
+        <div className="mb-6 flex justify-between">
+          <Link to="/">
+            <button className="px-4 py-2 bg-gray-700 text-gray-200 rounded hover:bg-gray-600">
+              Back to Home
+            </button>
+          </Link>
+          <Link to="/clients/new">
+            <button className="px-4 py-2 bg-green-600 text-gray-200 rounded hover:bg-green-500">
+              Add New Client
+            </button>
+          </Link>
+        </div>
+
+        {/* Search and Sorting */}
+        <form onSubmit={handleSearch} className="mb-6 flex gap-4">
+          <input
+            type="text"
+            placeholder="Search clients..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="px-4 py-2 w-full bg-gray-800 text-gray-200 rounded"
+          />
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value)}
+            className="px-4 py-2 bg-gray-800 text-gray-200 rounded"
+          >
+            <option value="firstName">Sort by First Name</option>
+            <option value="lastName">Sort by Last Name</option>
+            <option value="address">Sort by Address</option>
+          </select>
+          <button className="px-4 py-2 bg-blue-600 text-gray-200 rounded hover:bg-blue-500">
+            Search
+          </button>
+        </form>
+
+        {/* Clients Table */}
+        <div className="overflow-x-auto bg-gray-800 rounded shadow-md">
+          <table className="w-full table-auto border-collapse">
+            <thead className="bg-gray-700 text-gray-200">
+              <tr>
+                <th className="px-6 py-3 text-left">First Name</th>
+                <th className="px-6 py-3 text-left">Last Name</th>
+                <th className="px-6 py-3 text-left">Phone</th>
+                <th className="px-6 py-3 text-left">Address</th>
+                <th className="px-6 py-3 text-left">Actions</th>
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
+            </thead>
+            <tbody>
+              {clients.map((client, index) => (
+                <tr
+                  key={client.id}
+                  className={index % 2 === 0 ? "bg-gray-700" : "bg-gray-800"}
+                >
+                  <td className="px-6 py-4">{client.firstName}</td>
+                  <td className="px-6 py-4">{client.lastName}</td>
+                  <td className="px-6 py-4">{client.phone || "N/A"}</td>
+                  <td className="px-6 py-4">{client.address}</td>
+                  <td className="px-6 py-4 flex gap-2">
+                    <Link
+                      to={`/clients/edit/${client.id}`}
+                      className="px-3 py-1 bg-blue-500 text-gray-900 rounded hover:bg-blue-400"
+                    >
+                      Edit
+                    </Link>
+                    <Form
+                      method="post"
+                      onSubmit={(e) => {
+                        if (
+                          !confirm(
+                            `Are you sure you want to delete ${client.firstName} ${client.lastName}? This will also delete all associated orders.`
+                          )
+                        ) {
+                          e.preventDefault();
+                        }
+                      }}
+                    >
+                      <input type="hidden" name="id" value={client.id} />
+                      <button
+                        type="submit"
+                        className="px-3 py-1 bg-red-500 text-gray-900 rounded hover:bg-red-400"
+                      >
+                        Delete
+                      </button>
+                    </Form>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }

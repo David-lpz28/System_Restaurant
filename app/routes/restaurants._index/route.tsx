@@ -1,134 +1,162 @@
-import { Link, Form, useLoaderData, useNavigation } from "@remix-run/react";
-import type { LoaderFunction, ActionFunction } from "@remix-run/node";
+import { Link, Form, useLoaderData } from "@remix-run/react";
 import { json, redirect } from "@remix-run/node";
+import type { LoaderFunction, ActionFunction } from "@remix-run/node";
 import { prisma } from "~/db.server";
+import { useState } from "react";
 
 // Loader to fetch restaurants
-export const loader: LoaderFunction = async () => {
+export const loader: LoaderFunction = async ({ request }) => {
+  const url = new URL(request.url);
+  const search = url.searchParams.get("search") || "";
+  const sort = url.searchParams.get("sort") || "name";
+
   const restaurants = await prisma.restaurant.findMany({
-    orderBy: { name: "asc" },
+    where: {
+      OR: [
+        { name: { contains: search, mode: "insensitive" } },
+        { address: { contains: search, mode: "insensitive" } },
+      ],
+    },
+    orderBy: { [sort]: "asc" },
   });
+
   return json({ restaurants });
 };
 
-// Handle restaurant deletion
+// Action to handle restaurant deletion
 export const action: ActionFunction = async ({ request }) => {
   const formData = await request.formData();
   const restaurantId = formData.get("id");
 
-  if (typeof restaurantId !== "string") {
-    return json({ errorMessage: "Invalid restaurant ID." }, { status: 400 });
+  if (typeof restaurantId !== "string" || !restaurantId) {
+    return json({ error: "Invalid restaurant ID." }, { status: 400 });
   }
 
   try {
-    await prisma.order.deleteMany({ where: { restaurantId } });
+    // Delete associated orders and items before deleting the restaurant
+    const orders = await prisma.order.findMany({ where: { restaurantId } });
+    for (const order of orders) {
+      await prisma.item.deleteMany({ where: { orderId: order.id } });
+      await prisma.order.delete({ where: { id: order.id } });
+    }
+
     await prisma.restaurant.delete({ where: { id: restaurantId } });
 
-    return redirect("/restaurants?success=Restaurant deleted successfully.");
+    return redirect("/restaurants?success=Restaurant and associated orders deleted successfully.");
   } catch (error) {
     console.error("Error deleting restaurant:", error);
-    return json(
-      { errorMessage: "Could not delete the restaurant. Try again later." },
-      { status: 500 }
-    );
+    return json({ error: "Failed to delete the restaurant." }, { status: 500 });
   }
 };
 
-// Component for restaurant list
+// Component for Restaurants List
 export default function RestaurantsList() {
   const { restaurants } = useLoaderData();
-  const navigation = useNavigation();
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState("name");
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const params = new URLSearchParams();
+    if (search) params.append("search", search);
+    if (sort) params.append("sort", sort);
+    window.location.search = params.toString();
+  };
 
   return (
-    <div className="p-8 max-w-6xl mx-auto bg-gray-100 rounded-lg shadow-lg">
-      <header className="mb-6">
-        <h1 className="text-4xl font-bold text-gray-800">Restaurants</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Manage your restaurants. Add, edit, or delete as needed.
-        </p>
-      </header>
+    <div className="min-h-screen bg-gray-900 text-gray-200">
+      <div className="container mx-auto p-6">
+        <h1 className="text-3xl font-bold text-center mb-8">Restaurant Management</h1>
 
-      {/* Table for restaurants */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse rounded-md shadow-md">
-          <thead>
-            <tr className="bg-gray-700 text-white text-sm font-semibold">
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Phone</th>
-              <th className="px-4 py-3">Address</th>
-              <th className="px-4 py-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {restaurants.map((restaurant, idx) => (
-              <tr
-                key={restaurant.id}
-                className={`border-b ${
-                  idx % 2 === 0 ? "bg-gray-50" : "bg-white"
-                }`}
-              >
-                <td className="px-4 py-3 text-black">{restaurant.name}</td>
-                <td className="px-4 py-3 text-black">
-                  {restaurant.phone || "N/A"}
-                </td>
-                <td className="px-4 py-3 text-black">{restaurant.address}</td>
-                <td className="px-4 py-3 flex space-x-2">
-                  <Link to={`/restaurants/edit/${restaurant.id}`}>
-                    <button className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md shadow-sm">
-                      Edit
-                    </button>
-                  </Link>
-                  <Form
-                    method="post"
-                    onSubmit={(event) => {
-                      if (
-                        !confirm(
-                          `Are you sure you want to delete "${restaurant.name}"? This action cannot be undone.`
-                        )
-                      ) {
-                        event.preventDefault();
-                      }
-                    }}
-                  >
-                    <input type="hidden" name="id" value={restaurant.id} />
-                    <button
-                      type="submit"
-                      disabled={
-                        navigation.formData?.get("id") === restaurant.id &&
-                        navigation.state === "submitting"
-                      }
-                      className={`px-4 py-2 text-sm font-medium text-white rounded-md shadow-sm ${
-                        navigation.formData?.get("id") === restaurant.id &&
-                        navigation.state === "submitting"
-                          ? "bg-gray-400 cursor-not-allowed"
-                          : "bg-red-600 hover:bg-red-700"
-                      }`}
-                    >
-                      {navigation.formData?.get("id") === restaurant.id &&
-                      navigation.state === "submitting"
-                        ? "Deleting..."
-                        : "Delete"}
-                    </button>
-                  </Form>
-                </td>
+        {/* Navigation */}
+        <div className="mb-6 flex justify-between">
+          <Link to="/">
+            <button className="px-4 py-2 bg-gray-700 text-gray-200 rounded hover:bg-gray-600">
+              Back to Home
+            </button>
+          </Link>
+          <Link to="/restaurants/new">
+            <button className="px-4 py-2 bg-green-600 text-gray-200 rounded hover:bg-green-500">
+              Add New Restaurant
+            </button>
+          </Link>
+        </div>
+
+        {/* Search and Sorting */}
+        <form onSubmit={handleSearch} className="mb-6 flex gap-4">
+          <input
+            type="text"
+            placeholder="Search restaurants..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="px-4 py-2 w-full bg-gray-800 text-gray-200 rounded"
+          />
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value)}
+            className="px-4 py-2 bg-gray-800 text-gray-200 rounded"
+          >
+            <option value="name">Sort by Name</option>
+            <option value="address">Sort by Address</option>
+          </select>
+          <button className="px-4 py-2 bg-blue-600 text-gray-200 rounded hover:bg-blue-500">
+            Search
+          </button>
+        </form>
+
+        {/* Restaurants Table */}
+        <div className="overflow-x-auto bg-gray-800 rounded shadow-md">
+          <table className="w-full table-auto border-collapse">
+            <thead className="bg-gray-700 text-gray-200">
+              <tr>
+                <th className="px-6 py-3 text-left">Name</th>
+                <th className="px-6 py-3 text-left">Phone</th>
+                <th className="px-6 py-3 text-left">Address</th>
+                <th className="px-6 py-3 text-left">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Actions */}
-      <div className="mt-6 flex justify-between">
-        <Link to="/restaurants/new">
-          <button className="px-6 py-3 text-white bg-green-600 hover:bg-green-700 rounded-md shadow-md">
-            Add New Restaurant
-          </button>
-        </Link>
-        <Link to="/">
-          <button className="px-6 py-3 text-white bg-gray-600 hover:bg-gray-700 rounded-md shadow-md">
-            Back to Main Menu
-          </button>
-        </Link>
+            </thead>
+            <tbody>
+              {restaurants.map((restaurant, index) => (
+                <tr
+                  key={restaurant.id}
+                  className={index % 2 === 0 ? "bg-gray-700" : "bg-gray-800"}
+                >
+                  <td className="px-6 py-4">{restaurant.name}</td>
+                  <td className="px-6 py-4">{restaurant.phone || "N/A"}</td>
+                  <td className="px-6 py-4">{restaurant.address}</td>
+                  <td className="px-6 py-4 flex gap-2">
+                    <Link
+                      to={`/restaurants/edit/${restaurant.id}`}
+                      className="px-3 py-1 bg-blue-500 text-gray-900 rounded hover:bg-blue-400"
+                    >
+                      Edit
+                    </Link>
+                    <Form
+                      method="post"
+                      onSubmit={(e) => {
+                        if (
+                          !confirm(
+                            `Are you sure you want to delete "${restaurant.name}"? This will also delete all associated orders.`
+                          )
+                        ) {
+                          e.preventDefault();
+                        }
+                      }}
+                    >
+                      <input type="hidden" name="id" value={restaurant.id} />
+                      <button
+                        type="submit"
+                        className="px-3 py-1 bg-red-500 text-gray-900 rounded hover:bg-red-400"
+                      >
+                        Delete
+                      </button>
+                    </Form>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
