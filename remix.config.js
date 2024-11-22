@@ -4,5 +4,5 @@ module.exports = {
     assetsBuildDirectory: "public/build",
     publicPath: "/build/",
     serverBuildPath: "build/index.js",
-    // watchPaths: ["./src/*"], // Asegúrate de que esta línea esté eliminada si no es necesaria
+    // watchPaths: ["./src/*"], //
 };

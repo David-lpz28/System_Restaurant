@@ -1,7 +1,5 @@
-// prisma/schema.prisma
-
 datasource db {
-  provider = "postgresql" // o el proveedor que estés utilizando
+  provider = "postgresql" 
   url      = env("DATABASE_URL")
 }
 
@@ -16,6 +14,13 @@ model Client {
   phoneNumber String
   address     String
   orders      Order[] @relation("ClientOrders")
+}
+
+model Restaurant {
+  id       String  @id @default(cuid())
+  name     String
+  location String
+  createdAt DateTime @default(now())
 }
 
 model Order {
