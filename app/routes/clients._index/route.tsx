@@ -107,6 +107,10 @@ export default function ClientsList() {
     }
   }, [successMessage, errorMessage]);
 
+  if (!clients) {
+    return <p>Loading clients...</p>;
+  }
+
   return (
     <div>
       <h1>Client List</h1>
@@ -115,46 +119,67 @@ export default function ClientsList() {
       <Link to="/clients/new">
         <button>Create New Client</button>
       </Link>
-      <ul>
-        {clients.map((client) => {
-          const isDeleting =
-            navigation.formData?.get("id") === client.id &&
-            navigation.state === "submitting";
 
-          return (
-            <li key={client.id} style={{ marginTop: "10px" }}>
-              <span>
-                {client.firstName} {client.lastName} - {client.phoneNumber} -{" "}
-                {client.address}
-              </span>
-              <Link
-                to={`/clients/edit/${client.id}`}
-                style={{ marginLeft: "10px" }}
-              >
-                <button>Edit</button>
-              </Link>
-              <Form
-                method="post"
-                onSubmit={(event) => {
-                  if (
-                    !confirm(
-                      `Are you sure you want to delete ${client.firstName} ${client.lastName}?`
-                    )
-                  ) {
-                    event.preventDefault();
-                  }
-                }}
-                style={{ display: "inline-block", marginLeft: "10px" }}
-              >
-                <input type="hidden" name="id" value={client.id} />
-                <button type="submit" disabled={isDeleting}>
-                  {isDeleting ? "Deleting..." : "Delete"}
-                </button>
-              </Form>
-            </li>
-          );
-        })}
-      </ul>
+      {/* Client table */}
+      <table
+        style={{
+          width: "100%",
+          borderCollapse: "collapse",
+          marginTop: "20px",
+        }}
+      >
+        <thead>
+          <tr style={{ borderBottom: "2px solid black" }}>
+            <th style={{ padding: "10px" }}>First Name</th>
+            <th style={{ padding: "10px" }}>Last Name</th>
+            <th style={{ padding: "10px" }}>Phone Number</th>
+            <th style={{ padding: "10px" }}>Address</th>
+            <th style={{ padding: "10px" }}>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {clients.map((client) => {
+            const isDeleting =
+              navigation.formData?.get("id") === client.id &&
+              navigation.state === "submitting";
+
+            return (
+              <tr key={client.id} style={{ borderBottom: "1px solid gray" }}>
+                <td style={{ padding: "10px" }}>{client.firstName}</td>
+                <td style={{ padding: "10px" }}>{client.lastName}</td>
+                <td style={{ padding: "10px" }}>{client.phoneNumber}</td>
+                <td style={{ padding: "10px" }}>{client.address}</td>
+                <td style={{ padding: "10px" }}>
+                  <Link
+                    to={`/clients/edit/${client.id}`}
+                    style={{ marginRight: "10px" }}
+                  >
+                    <button>Edit</button>
+                  </Link>
+                  <Form
+                    method="post"
+                    onSubmit={(event) => {
+                      if (
+                        !confirm(
+                          `Are you sure you want to delete ${client.firstName} ${client.lastName}?`
+                        )
+                      ) {
+                        event.preventDefault();
+                      }
+                    }}
+                    style={{ display: "inline-block" }}
+                  >
+                    <input type="hidden" name="id" value={client.id} />
+                    <button type="submit" disabled={isDeleting}>
+                      {isDeleting ? "Deleting..." : "Delete"}
+                    </button>
+                  </Form>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
